@@ -1,4 +1,5 @@
 use self::orca::Orca;
+use self::raydium::Raydium;
 #[cfg(target_os = "wasi")]
 use primitive::{
     filter::{ptr_to_filter, CatscopeFilter},
@@ -17,6 +18,7 @@ use std::collections::VecDeque;
 //pub mod all;
 pub mod orca;
 pub mod primitive;
+pub mod raydium;
 pub mod safejar;
 pub mod solpipe;
 
@@ -61,6 +63,9 @@ pub unsafe extern "C" fn init() -> u64 {
             }
             2 => {
                 list.push_back(Box::new(Orca::new(program_id)));
+            }
+            3 => {
+                list.push_back(Box::new(Raydium::new(program_id)));
             }
             _ => {}
         }

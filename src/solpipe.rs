@@ -38,6 +38,7 @@ impl GuestFilter for Solpipe {
         let id = header.pubkey;
         let pubkey_len = std::mem::size_of::<Pubkey>();
         let subbuf = &data[DISCRIMINATOR_SIZE..];
+
         #[cfg(target_os = "wasi")]
         HostImport::log(format!("_edge - 1 - pubkey {};", id));
         if match_discriminator(&self.d_controller, data) {
@@ -48,11 +49,11 @@ impl GuestFilter for Solpipe {
                 to: id,
             };
             let mut i = 1; // start after bump
-            let length = pubkey_len;
+            let mut length = pubkey_len;
             let admin_pk = Pubkey::try_from(&subbuf[i..(i + length)]).unwrap();
             let admin = FilterEdge {
                 slot: header.slot,
-                weight: WEIGHT_DIRECT | WEIGHT_IS_OUTGOING,
+                weight: WEIGHT_DIRECT,
                 from: id,
                 to: admin_pk,
             };
@@ -67,7 +68,6 @@ impl GuestFilter for Solpipe {
             //};
             i += length;
             let pc_mint_pk = Pubkey::try_from(&subbuf[i..(i + length)]).unwrap();
-
             #[cfg(target_os = "wasi")]
             HostImport::log(format!(
                 "edge - 2 - pubkey {}; controller; admin {}; pcmint {}; pcvault {};",
@@ -75,8 +75,6 @@ impl GuestFilter for Solpipe {
             ));
             list.push_back(program);
             list.push_back(admin);
-            //          list.push_back(pcmint);
-            // list.push_back(pcvault);
         } else if match_discriminator(&self.d_controller_api, data) {
             let i = 1; // start after bump
             let controller_pk = Pubkey::try_from(&subbuf[i..(i + pubkey_len)]).unwrap();
@@ -107,7 +105,7 @@ impl GuestFilter for Solpipe {
             i += length + 2;
             let admin = FilterEdge {
                 slot: header.slot,
-                weight: WEIGHT_SYMLINK | WEIGHT_IS_OUTGOING,
+                weight: WEIGHT_SYMLINK,
                 from: id,
                 to: Pubkey::try_from(&subbuf[i..(i + length)]).unwrap(),
             };
@@ -151,16 +149,16 @@ impl GuestFilter for Solpipe {
             if let Some(claim_count) = Refunds::count(subbuf) {
                 for i in 0..claim_count {
                     let claim = Refunds::parse(subbuf, i);
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        from: id,
-                        to: claim.bidder,
-                        weight: WEIGHT_SYMLINK,
-                    });
+                    if 0 < claim.balance {
+                        list.push_back(FilterEdge {
+                            slot: header.slot,
+                            from: id,
+                            to: claim.bidder,
+                            weight: WEIGHT_SYMLINK,
+                        });
+                    }
                 }
             }
-
-            // iterate through
         } else if match_discriminator(&self.d_bidlist, data) {
             // map from bidder (agent) to payout;
             // parse this for now because the logic is more complicated than before;
@@ -207,7 +205,7 @@ impl GuestFilter for Solpipe {
                 slot: header.slot,
                 from: id,
                 to: Pubkey::try_from(&subbuf[i..(i + pubkey_len)]).unwrap(),
-                weight: WEIGHT_DIRECT | WEIGHT_IS_OUTGOING,
+                weight: WEIGHT_DIRECT,
             };
             i += pubkey_len + 4 * 8;
             // this may or may not get replaced with a token owner graph edge
@@ -215,7 +213,7 @@ impl GuestFilter for Solpipe {
                 slot: header.slot,
                 from: id,
                 to: Pubkey::try_from(&subbuf[i..(i + pubkey_len)]).unwrap(),
-                weight: WEIGHT_DIRECT | WEIGHT_IS_OUTGOING,
+                weight: WEIGHT_DIRECT,
             };
             list.push_back(controller);
             list.push_back(authorizer);

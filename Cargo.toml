@@ -1,6 +1,6 @@
 [package]
 name = "catscope-edge-generator"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/noncepad/catscope-edge-generator"
 license = "MIT"

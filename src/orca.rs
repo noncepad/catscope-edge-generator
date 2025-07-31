@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, system_program::ID as system_id};
 
 #[cfg(target_os = "wasi")]
 use crate::primitive::wasmimport::HostImport;
@@ -48,34 +48,40 @@ impl GuestFilter for Orca {
             {
                 i = 8;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: pubkey,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: id,
+                        to: pubkey,
+                    });
+                }
             }
             // Collect Protocol Fees Authority
             {
                 i = 40;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: pubkey,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: id,
+                        to: pubkey,
+                    });
+                }
             }
             // Reward Emissions Super Authority
             {
                 i = 72;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: pubkey,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: id,
+                        to: pubkey,
+                    });
+                }
             }
         } else if match_discriminator(&self.d_whirlpool, data) {
             #[cfg(target_os = "wasi")]
@@ -84,12 +90,14 @@ impl GuestFilter for Orca {
             {
                 i = 8;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: pubkey,
-                    to: id,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: pubkey,
+                        to: id,
+                    });
+                }
             }
             // skip mint edges; they are useless as the mint information is available in the vault
             // accounts
@@ -97,23 +105,27 @@ impl GuestFilter for Orca {
             {
                 i = 133;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: pubkey,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: id,
+                        to: pubkey,
+                    });
+                }
             }
             // token vault B
             {
                 i = 213;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: pubkey,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: id,
+                        to: pubkey,
+                    });
+                }
             }
             // rewards -> TBD
         } else if match_discriminator(&self.d_tickarray, data) {
@@ -121,12 +133,14 @@ impl GuestFilter for Orca {
             {
                 i = data.len() - pubkey_len;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: pubkey,
-                    to: id,
-                });
+                if pubkey != system_id {
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        weight: WEIGHT_DIRECT,
+                        from: pubkey,
+                        to: id,
+                    });
+                }
             }
         }
         #[cfg(target_os = "wasi")]
@@ -304,5 +318,3 @@ mod tests {
         assert_eq!(*m_edge.get(&reward).unwrap(), WEIGHT_DIRECT);
     }
 }
-
-// 2LecshUwdy9xi7meFgHtFJQNSKk4KdTrcpvaB56dP2NQ
