@@ -1,6 +1,6 @@
 [package]
 name = "catscope-edge-generator"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 repository = "https://github.com/noncepad/catscope-edge-generator"
 license = "MIT"
@@ -32,13 +32,13 @@ copyright = "2025, Noncepad LLC"
 license-file = ["LICENSE", "4"]
 extended-description = """\
 A filter for use in the Catscope geyser plugin \
-that produces edges for System, Token, Safejar,\
+that produces edges for System, Token, Orca, Raydium, Meteora, Pumpfun, Safejar,\
 and Solpipe accounts."""
 section = "utility"
 priority = "optional"
 assets = [
   [
-    "target/wasm32-wasip1/release/catscope_edge_generator.wasm",
+    "target/release/catscope_edge_generator.wasm",
     "/usr/share/catscope/catscope_edge_generator.wasm",
     "644",
   ],

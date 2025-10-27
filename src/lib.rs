@@ -1,4 +1,6 @@
+use self::meteora::Meteora;
 use self::orca::Orca;
+use self::pumpfun::Pumpfun;
 use self::raydium::Raydium;
 #[cfg(target_os = "wasi")]
 use primitive::{
@@ -16,8 +18,10 @@ use solpipe::Solpipe;
 use std::collections::VecDeque;
 
 //pub mod all;
+pub mod meteora;
 pub mod orca;
 pub mod primitive;
+pub mod pumpfun;
 pub mod raydium;
 pub mod safejar;
 pub mod solpipe;
@@ -66,6 +70,12 @@ pub unsafe extern "C" fn init() -> u64 {
             }
             3 => {
                 list.push_back(Box::new(Raydium::new(program_id)));
+            }
+            4 => {
+                list.push_back(Box::new(Meteora::new(program_id)));
+            }
+            5 => {
+                list.push_back(Box::new(Pumpfun::new(program_id)));
             }
             _ => {}
         }
