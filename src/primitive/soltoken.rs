@@ -35,13 +35,8 @@ impl GuestFilter for SolToken {
         if header.owner.eq(&system_id) {
             // there is nothing to do;
             #[cfg(target_os = "wasi")]
-            HostImport::log(format!("system account - 1 -  {}", header.pubkey));
-            list.push_back(FilterEdge {
-                slot: header.slot,
-                from: system_id,
-                to: header.pubkey,
-                weight: WEIGHT_PROGRAM,
-            });
+            HostImport::log(format!("system account - 1__+ -  {}", header.pubkey));
+            // DO NOT set edge for system account
         } else if header.owner.eq(&token_id) {
             #[cfg(target_os = "wasi")]
             HostImport::log(format!(

@@ -21,6 +21,7 @@ pub struct AccountHeader {
     /// this account's data contains a loaded program (and is now read-only)
     pub executable: bool,
 }
+
 impl AccountHeader {
     pub fn reset(&mut self) {
         self.pubkey = Pubkey::default();
