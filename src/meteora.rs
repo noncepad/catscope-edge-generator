@@ -13,9 +13,10 @@ use crate::primitive::{
 
 pub struct Meteora {
     d_lb_pair: [u8; 8],
+    d_bin_array: [u8; 8],
+    d_bin_array_ext: [u8; 8],
     d_position: [u8; 8],
     d_position_v2: [u8; 8],
-    d_bin_array: [u8; 8],
     pub program_id: Pubkey,
 }
 
@@ -27,9 +28,8 @@ impl GuestFilter for Meteora {
     fn edge(&self, header: &AccountHeader, data: &[u8]) -> VecDeque<FilterEdge> {
         let mut list = VecDeque::new();
         let id = header.pubkey;
-        let prefix = self.d_lb_pair.len();
-        let mut i;
         let pubkey_len = std::mem::size_of::<Pubkey>();
+        let mut i;
 
         #[cfg(target_os = "wasi")]
         HostImport::log(format!(
@@ -37,121 +37,223 @@ impl GuestFilter for Meteora {
             id,
             data.len()
         ));
-
         if match_discriminator(&self.d_lb_pair, data) {
             #[cfg(target_os = "wasi")]
             HostImport::log(format!("meteora_edge - 2 - lb_pair - pubkey {};", id));
+            
+            // program → lb_pair
+            list.push_back(FilterEdge {
+                slot: header.slot,
+                weight: WEIGHT_DIRECT,
+                from: self.program_id,
+                to: id,
+            });
 
-            // LbPair contains: parameters, v_parameters, bump_seed, bin_step_seed (32 bytes)
-            // Then token_x_mint at offset 8 + 32 = 40
+            // token_0_mint
             {
-                i = prefix + 32;
+                i = 88;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
                     });
                 }
             }
-            // token_y_mint at offset 8 + 32 + 32 = 72
-            {
-                i = prefix + 32 + pubkey_len;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
-            // reserve_x at offset 8 + 32 + 32 + 32 = 104
-            {
-                i = prefix + 32 + pubkey_len * 2;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
-            // reserve_y at offset 8 + 32 + 32 + 32 + 32 = 136
-            {
-                i = prefix + 32 + pubkey_len * 3;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
-            // oracle at offset 8 + 32 + 32 + 32 + 32 + 32 = 168
-            {
-                i = prefix + 32 + pubkey_len * 4;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
-        } else if match_discriminator(&self.d_position, data) || match_discriminator(&self.d_position_v2, data) {
-            #[cfg(target_os = "wasi")]
-            HostImport::log(format!("meteora_edge - 2 - position - pubkey {};", id));
 
-            // lb_pair at offset 8
+            // token_1_mint
             {
-                i = prefix;
+                i = 120;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: pubkey,
-                        to: id,
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
                     });
                 }
             }
-            // owner at offset 8 + 32 = 40
+            // reserve_x
             {
-                i = prefix + pubkey_len;
+                i = 152;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
                     });
                 }
             }
-        } else if match_discriminator(&self.d_bin_array, data) {
-            #[cfg(target_os = "wasi")]
-            HostImport::log(format!("meteora_edge - 2 - bin_array - pubkey {};", id));
-
-            // lb_pair at offset 8
+            // reserve_y
             {
-                i = prefix;
+                i = 184;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: pubkey,
-                        to: id,
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // oracle
+            {
+                i = 488;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // pre_activation_swap_address
+            {
+                i = 688;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // base_key
+            {
+                i = 720;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // creator
+            {
+                i = 784;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            } else if match_discriminator(&self.d_bin_array, data) {
+            {
+                i = 24;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey });
+                }
+            } else if match_discriminator(&self.d_bin_array_ext, data) {
+            {
+                i = 8;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            } else if match_discriminator(&self.d_position, data) {
+            // lb_pair
+            {
+                i = 8;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // owner
+            {
+                i = 40;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+        } else if match_discriminator(&self.d_position_v2, data) {
+            // lb_pair
+            {
+                i = 8;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // owner
+            {
+                i = 40;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // operator
+            {
+                i = 248;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
+                    });
+                }
+            }
+            // fee_owner
+            {
+                i = 281;
+                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
+                if pubkey != system_id {
+                    list.push_back(FilterEdge { 
+                        slot: header.slot, 
+                        weight: WEIGHT_DIRECT, 
+                        from: id, 
+                        to: pubkey 
                     });
                 }
             }
@@ -159,39 +261,27 @@ impl GuestFilter for Meteora {
 
         #[cfg(target_os = "wasi")]
         HostImport::log(format!("meteora_edge - 4 - pubkey {};", id));
+
         list
     }
 }
 
 impl Meteora {
     pub fn new(program_id: &Pubkey) -> Self {
-        let d_lb_pair = lb_pair_discriminator();
-        let d_position = position_discriminator();
-        let d_position_v2 = position_v2_discriminator();
-        let d_bin_array = bin_array_discriminator();
+        let d_lb_pair = [33, 11, 49, 98, 181, 101, 177, 13];
+        let d_bin_array = [92, 142, 92, 220, 5, 148, 70, 181];
+        let d_bin_array_ext = [80, 111, 124, 113, 55, 237, 18, 5];
+        let d_position = [170, 188, 143, 228, 122, 64, 247, 208];
+        let d_position_v2 = [117, 176, 212, 199, 245, 180, 133, 182];
+
         Self {
             program_id: *program_id,
             d_lb_pair,
+            d_bin_array,
+            d_bin_array_ext,
             d_position,
             d_position_v2,
-            d_bin_array,
         }
     }
 }
 
-// Meteora DLMM discriminators
-pub fn lb_pair_discriminator() -> [u8; 8] {
-    [33, 11, 49, 98, 181, 101, 177, 13]
-}
-
-pub fn position_discriminator() -> [u8; 8] {
-    [170, 188, 143, 228, 122, 64, 248, 208]
-}
-
-pub fn position_v2_discriminator() -> [u8; 8] {
-    [117, 180, 212, 199, 245, 180, 133, 182]
-}
-
-pub fn bin_array_discriminator() -> [u8; 8] {
-    [92, 142, 92, 220, 5, 148, 70, 91]
-}
