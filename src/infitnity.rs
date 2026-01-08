@@ -210,6 +210,18 @@ impl GuestFilter for Infinity {
         // LST List (GLOBAL)
         // =====================================================
 
+        if id == self.lst_list {
+            #[cfg(target_os = "wasi")]
+            HostImport::log(format!("infinity_edge - lst_list {}", id));
+
+            // program → lst_list (useful root edge)
+            list.push_back(FilterEdge {
+                slot: header.slot,
+                weight: WEIGHT_DIRECT,
+                from: self.program_id,
+                to: id,
+            });
+
         // Observed LST list entry layout (from manual hex inspection):
         //
         //   [ flags / padding / metadata ] 16 bytes
@@ -224,14 +236,15 @@ impl GuestFilter for Infinity {
         let mut i = 0;
 
         while i + entry_size <= data.len() {
-            // skip flags / padding
-            i += 16;
+            let entry_start = i;
 
-            let mint = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
-            i += pubkey_len;
+            // flags / padding
+            let mut j = entry_start + 16;
 
-            let calculator = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
-            i += pubkey_len;
+            let mint = Pubkey::try_from(&data[j..j + pubkey_len]).unwrap();
+            j += pubkey_len;
+
+            let calculator = Pubkey::try_from(&data[j..j + pubkey_len]).unwrap();
 
             // lst_list → mint
             list.push_back(FilterEdge {
@@ -248,10 +261,10 @@ impl GuestFilter for Infinity {
                 from: mint,
                 to: calculator,
             });    
-        
-            return list;
-            
-        }
+
+            i += entry_size;
+        }   
+    }
 
 
 
