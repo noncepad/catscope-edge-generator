@@ -209,60 +209,54 @@ impl GuestFilter for Infinity {
         // =====================================================
         // LST List (GLOBAL)
         // =====================================================
-        if id == self.lst_list {
-            #[cfg(target_os = "wasi")]
-            HostImport::log(format!("infinity_edge - lst_list {}", id));
 
-            // program → lst_list
+        // Observed LST list entry layout (from manual hex inspection):
+        //
+        //   [ flags / padding / metadata ] 16 bytes
+        //   [ Pubkey mint ]                32 bytes
+        //   [ Pubkey calculator ]          32 bytes
+        //
+        // Total per-entry size = 80 bytes
+
+        let pubkey_len = std::mem::size_of::<Pubkey>(); // 32
+        let entry_size = 16 + pubkey_len * 2;           // 80 bytes
+
+        let mut i = 0;
+
+        while i + entry_size <= data.len() {
+            // skip flags / padding
+            i += 16;
+
+            let mint = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
+            i += pubkey_len;
+
+            let calculator = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
+            i += pubkey_len;
+
+            // lst_list → mint
             list.push_back(FilterEdge {
                 slot: header.slot,
                 weight: WEIGHT_DIRECT,
-                from: self.program_id,
-                to: id,
+                from: id,
+                to: mint,
             });
 
-            // TODO: determine header size
-            let mut i = 0;
-
-            // Example pattern:
-            // [u32 count]
-            // repeated entries:
-            //   [Pubkey mint]
-            //   [Pubkey calculator]
-            //
-            // Adjust offsets once confirmed from hex.
-            let count =
-                u32::from_le_bytes(data[i..i + 4].try_into().unwrap()) as usize;
-            i += 4;
-
-            for _ in 0..count {
-                let mint = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
-                i += pubkey_len;
-                let calculator = Pubkey::try_from(&data[i..i + pubkey_len]).unwrap();
-                i += pubkey_len;
-
-                // lst_list → mint
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: id,
-                    to: mint,
-                });
-
-                // mint → calculator
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    weight: WEIGHT_DIRECT,
-                    from: mint,
-                    to: calculator,
-                });
-            }
-
+            // mint → calculator
+            list.push_back(FilterEdge {
+                slot: header.slot,
+                weight: WEIGHT_DIRECT,
+                from: mint,
+                to: calculator,
+            });    
+        
             return list;
+            
         }
 
+
+
         // =====================================================
-        // SPL Token Accounts (Pool Reserves)
+        // Pool Reserves (SPL Token Accounts) 
         // =====================================================
         if header.owner == spl_token::id() {
             if let Ok(token) = TokenAccount::unpack(data) {
