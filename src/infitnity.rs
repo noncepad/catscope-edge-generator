@@ -266,33 +266,6 @@ impl GuestFilter for Infinity {
         }   
     }
 
-
-
-        // =====================================================
-        // Pool Reserves (SPL Token Accounts) 
-        // =====================================================
-        if header.owner == spl_token::id() {
-            if let Ok(token) = TokenAccount::unpack(data) {
-                if token.owner == self.pool_state {
-                    // pool_state → reserve vault
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: self.pool_state,
-                        to: id,
-                    });
-
-                    // reserve vault → mint
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: token.mint,
-                    });
-                }
-            }
-        }
-
         list
     }
 }
