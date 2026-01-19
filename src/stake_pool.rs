@@ -11,22 +11,13 @@ use crate::primitive::{
     tree::{FilterEdge, WEIGHT_DIRECT, WEIGHT_PROGRAM},
 };
 
-/// SPL Stake Pool (mainnet) program id:
-/// SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy
-///
-/// This filter emits **only pubkey edges embedded in on-chain accounts**:
-/// - StakePool account -> authority / mint / fee / list / reserve pubkeys
-/// - ValidatorList account -> each validator vote pubkey
-///
-/// It does NOT:
-/// - parse instructions
-/// - compute PDAs (withdraw authority, transient stake, metadata, etc.)
-/// - interpret balances, fees, or stake amounts
-pub struct StakePoolFilter {
+/// SPL Stake Pool program
+/// Mainnet: SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy
+pub struct StakePool {
     pub program_id: Pubkey,
 }
 
-impl StakePoolFilter {
+impl StakePool {
     pub fn new(program_id: &Pubkey) -> Self {
         Self {
             program_id: *program_id,
@@ -34,286 +25,247 @@ impl StakePoolFilter {
     }
 }
 
-// SPL stake-pool AccountType values (from spl-stake-pool state.rs)
+/// Account type discriminator (first byte)
 const ACCOUNT_TYPE_UNINITIALIZED: u8 = 0;
 const ACCOUNT_TYPE_STAKE_POOL: u8 = 1;
 const ACCOUNT_TYPE_VALIDATOR_LIST: u8 = 2;
 
-impl GuestFilter for StakePoolFilter {
+impl GuestFilter for StakePool {
     fn program_id_list(&self) -> Vec<Pubkey> {
         vec![self.program_id]
     }
 
     fn edge(&self, header: &AccountHeader, data: &[u8]) -> VecDeque<FilterEdge> {
-        let mut list = VecDeque::new();
+        let mut edges = VecDeque::new();
         let id = header.pubkey;
 
-        #[cfg(target_os = "wasi")]
-        HostImport::log(format!(
-            "stake_pool_edge - 1 - pubkey {}; data len {}",
-            id,
-            data.len()
-        ));
-
         if data.is_empty() {
-            return list;
+            return edges;
         }
 
         let account_type = data[0];
-        if account_type == ACCOUNT_TYPE_UNINITIALIZED {
-            return list;
-        }
-
-        if account_type == ACCOUNT_TYPE_STAKE_POOL {
-            #[cfg(target_os = "wasi")]
-            HostImport::log(format!("stake_pool_edge - stake_pool - pubkey {};", id));
-
-            // program -> stake pool
-            list.push_back(FilterEdge {
-                slot: header.slot,
-                weight: WEIGHT_PROGRAM,
-                from: self.program_id,
-                to: id,
-            });
-
-            // ----------------------------------------------------------
-            // StakePool layout (from SPL state.rs):
-            //   0:   account_type: u8
-            //   1..: manager: Pubkey
-            //         staker: Pubkey
-            //         stake_deposit_authority: Pubkey
-            //         stake_withdraw_bump_seed: u8   (skip)
-            //         validator_list: Pubkey
-            //         reserve_stake: Pubkey
-            //         pool_mint: Pubkey
-            //         manager_fee_account: Pubkey
-            //         token_program_id: Pubkey
-            //         ... (rest ignored)
-            //
-            // We only emit edges for the pubkey fields above.
-            // ----------------------------------------------------------
-
-            let mut off = 1;
-            let pk = |data: &[u8], off: usize| -> Option<Pubkey> {
-                if off + 32 <= data.len() {
-                    Pubkey::try_from(&data[off..off + 32]).ok()
-                } else {
-                    None
-                }
-            };
-
-            // manager
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // staker
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // stake_deposit_authority
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // stake_withdraw_bump_seed: u8 (skip 1 byte)
-            off += 1;
-
-            // validator_list
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // reserve_stake
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // pool_mint
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // manager_fee_account
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-            off += 32;
-
-            // token_program_id
-            if let Some(to) = pk(data, off) {
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: id,
-                    to,
-                    weight: WEIGHT_DIRECT,
-                });
-            }
-
-            // NOTE: We intentionally do NOT continue parsing after this point.
-            // The rest includes numeric params + optional pubkeys; we can add
-            // preferred validator vote edges later if you want.
-
-        } else if account_type == ACCOUNT_TYPE_VALIDATOR_LIST {
-            #[cfg(target_os = "wasi")]
-            HostImport::log(format!("stake_pool_edge - validator_list - pubkey {};", id));
-
-            // ValidatorList is owned by the stake-pool program; we link it to the program
-            list.push_back(FilterEdge {
-                slot: header.slot,
-                weight: WEIGHT_PROGRAM,
-                from: self.program_id,
-                to: id,
-            });
-
-            // ----------------------------------------------------------
-            // ValidatorList layout (SPL):
-            //   account_type: u8
-            //   header: ValidatorListHeader (fixed-size)
-            //   validators: Vec<ValidatorStakeInfo> (borsh-ish but stored in account)
-            //
-            // We only need the vote_account_address pubkey per entry.
-            //
-            // IMPORTANT: The exact header size / entry size depends on the program version.
-            // In the standard SPL stake-pool implementation, ValidatorStakeInfo is a fixed-size
-            // Pod-like struct and the list account is sized to hold max validators.
-            //
-            // To avoid brittle hardcoding, we do a conservative scan:
-            //   - skip the first byte (account_type)
-            //   - scan the remaining bytes for 32-byte aligned pubkeys, stepping by 1 entry size
-            //
-            // If you paste `validator_list.rs` / the exact struct packing constants, we can
-            // replace this with exact offsets.
-            // ----------------------------------------------------------
-
-            // Best-effort parsing strategy:
-            // 1) Find vec length if stored as u32 at the start of the validators region.
-            // 2) Otherwise, fall back to scanning for plausible vote pubkeys with a fixed stride.
-
-            // Heuristic constants (will be corrected once we see validator list packing):
-            const PUBKEY_LEN: usize = 32;
-
-            // Conservative: try to locate a u32 length somewhere early.
-            // Many implementations put a header that includes max_validators and maybe a count.
-            // We'll just scan a small window for a plausible count and then read entries.
-            let mut parsed_any = false;
-
-            // Try window positions where a u32 "len" might live.
-            for len_off in [1usize, 5, 9, 13, 17, 21, 25, 29] {
-                if len_off + 4 > data.len() {
-                    continue;
-                }
-                let n = u32::from_le_bytes(data[len_off..len_off + 4].try_into().unwrap()) as usize;
-                if n == 0 || n > 10_000 {
-                    continue;
-                }
-
-                // After this len field, entries might begin shortly after.
-                // Try a few candidate starts.
-                for start in [len_off + 4, len_off + 8, len_off + 16, len_off + 32] {
-                    let mut off = start;
-                    let mut ok = 0usize;
-
-                    for _ in 0..n {
-                        if off + PUBKEY_LEN > data.len() {
-                            break;
-                        }
-                        if let Ok(vote) = Pubkey::try_from(&data[off..off + PUBKEY_LEN]) {
-                            // validator_list -> vote account
-                            list.push_back(FilterEdge {
-                                slot: header.slot,
-                                from: id,
-                                to: vote,
-                                weight: WEIGHT_DIRECT,
-                            });
-                            ok += 1;
-                        }
-                        // Try common fixed entry sizes: Pubkey + some ints.
-                        // We'll guess 32 + 4 + 8 + 8 + 8 etc. but to avoid hardcoding,
-                        // step by 64 as a safe-ish default unless proven otherwise.
-                        off = off.saturating_add(64);
-                    }
-
-                    if ok > 0 {
-                        parsed_any = true;
-                        break;
-                    }
-                }
-
-                if parsed_any {
-                    break;
-                }
-            }
-
-            if !parsed_any {
-                #[cfg(target_os = "wasi")]
-                HostImport::log(format!(
-                    "stake_pool_edge - validator_list - fallback scan - pubkey {};",
-                    id
-                ));
-
-                // Fallback: scan every 32-byte boundary after the first byte.
-                // This is noisy, but still useful for graph discovery if the account is mostly pubkeys.
-                let mut off = 1usize;
-                while off + 32 <= data.len() {
-                    if let Ok(vote) = Pubkey::try_from(&data[off..off + 32]) {
-                        list.push_back(FilterEdge {
-                            slot: header.slot,
-                            from: id,
-                            to: vote,
-                            weight: WEIGHT_DIRECT,
-                        });
-                    }
-                    off += 32;
-                }
-            }
-        }
 
         #[cfg(target_os = "wasi")]
-        HostImport::log(format!("stake_pool_edge - done - pubkey {};", id));
+        HostImport::log(format!(
+            "stake_pool_edge: pubkey={} type={}",
+            id, account_type
+        ));
 
-        list
+        match account_type {
+            ACCOUNT_TYPE_STAKE_POOL => {
+                self.handle_stake_pool(header, data, &mut edges);
+            }
+            ACCOUNT_TYPE_VALIDATOR_LIST => {
+                self.handle_validator_list(header, data, &mut edges);
+            }
+            _ => {}
+        }
+
+        edges
+    }
+}
+
+impl StakePool {
+    // ------------------------------------------------------------
+    // StakePool account parsing
+    // ------------------------------------------------------------
+    fn handle_stake_pool(
+        &self,
+        header: &AccountHeader,
+        data: &[u8],
+        edges: &mut VecDeque<FilterEdge>,
+    ) {
+        let id = header.pubkey;
+
+        // Program → StakePool
+        edges.push_back(FilterEdge {
+            slot: header.slot,
+            from: self.program_id,
+            to: id,
+            weight: WEIGHT_PROGRAM,
+        });
+
+        // Layout (from spl-stake-pool state.rs):
+        //
+        // 0     u8   account_type
+        // 1     Pubkey manager
+        // 33    Pubkey staker
+        // 65    Pubkey stake_deposit_authority
+        // 97    u8   stake_withdraw_bump
+        // 98    Pubkey validator_list
+        // 130   Pubkey reserve_stake
+        // 162   Pubkey pool_mint
+        // 194   Pubkey manager_fee_account
+        // 226   Pubkey token_program_id
+        //
+        // Everything after this is numeric / config data.
+
+        let mut off = 1;
+
+        let mut read_pubkey = |off: usize| -> Option<Pubkey> {
+            if off + 32 <= data.len() {
+                Pubkey::try_from(&data[off..off + 32]).ok()
+            } else {
+                None
+            }
+        };
+
+        // manager
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // staker
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // stake_deposit_authority
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // bump seed
+        off += 1;
+
+        // validator_list
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // reserve_stake
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // pool_mint
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // manager_fee_account
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+        off += 32;
+
+        // token_program_id
+        if let Some(pk) = read_pubkey(off) {
+            edges.push_back(FilterEdge {
+                slot: header.slot,
+                from: id,
+                to: pk,
+                weight: WEIGHT_DIRECT,
+            });
+        }
+    }
+
+    // ------------------------------------------------------------
+    // ValidatorList parsing
+    // ------------------------------------------------------------
+    fn handle_validator_list(
+        &self,
+        header: &AccountHeader,
+        data: &[u8],
+        edges: &mut VecDeque<FilterEdge>,
+    ) {
+        let id = header.pubkey;
+
+        // Program → ValidatorList
+        edges.push_back(FilterEdge {
+            slot: header.slot,
+            from: self.program_id,
+            to: id,
+            weight: WEIGHT_PROGRAM,
+        });
+
+        // Layout:
+        // [u8 account_type]
+        // [ValidatorListHeader]
+        // [u32 vec_len]
+        // [ValidatorStakeInfo * vec_len]
+        //
+        // ValidatorStakeInfo layout (relevant part):
+        //   Pubkey vote_account_address (first 32 bytes)
+
+        let mut offset = 1;
+
+        // Skip ValidatorListHeader.
+        // In SPL this is fixed-size (32 bytes).
+        // Safe to skip 32 here.
+        offset += 32;
+
+        if offset + 4 > data.len() {
+            return;
+        }
+
+        let len = u32::from_le_bytes(
+            data[offset..offset + 4]
+                .try_into()
+                .unwrap(),
+        ) as usize;
+        offset += 4;
+
+        // Each entry is fixed-size; vote pubkey is always first field.
+        // Total entry size in SPL is currently 72 bytes.
+        const ENTRY_SIZE: usize = 72;
+
+        for _ in 0..len {
+            if offset + 32 > data.len() {
+                break;
+            }
+
+            if let Ok(vote) = Pubkey::try_from(&data[offset..offset + 32]) {
+                edges.push_back(FilterEdge {
+                    slot: header.slot,
+                    from: id,
+                    to: vote,
+                    weight: WEIGHT_DIRECT,
+                });
+            }
+
+            offset += ENTRY_SIZE;
+        }
     }
 }
