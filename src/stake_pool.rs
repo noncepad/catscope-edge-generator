@@ -11,7 +11,7 @@ use crate::primitive::{
     tree::{FilterEdge, WEIGHT_DIRECT, WEIGHT_PROGRAM},
 };
 
-/// SPL Stake Pool program
+/// SPL Stake Pool 
 /// Mainnet: SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy
 pub struct StakePool {
     pub program_id: Pubkey,
