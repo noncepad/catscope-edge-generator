@@ -183,6 +183,10 @@ pub unsafe extern "C" fn edge(cat_ptr: u64, ptr: u64, size: u32) -> u64 {
         "edge - 1 - header {} {} {}",
         h.pubkey, h.owner, h.lamports
     ));*/
+    HostImport::log(format!(
+        "outside - 2 - pubkey {}; owner {}",
+        h.pubkey, h.owner,
+    ));
     let data = a.data();
     let mut list = filter.edge(h, data);
     if list.is_empty() {

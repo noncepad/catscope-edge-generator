@@ -29,7 +29,7 @@ impl GuestFilter for Safejar {
         let pubkey_len = std::mem::size_of::<Pubkey>();
         #[cfg(target_os = "wasi")]
         HostImport::log(format!(
-            "safejar_edge - 1 - pubkey {}; data len {}",
+            "safejar_edge - _1 - pubkey {}; data len {}",
             id,
             data.len()
         ));
