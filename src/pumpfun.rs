@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use solana_sdk::{pubkey::Pubkey, system_program::ID as system_id};
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "linux"))]
 use crate::primitive::wasmimport::HostImport;
 use crate::primitive::{
     common::match_discriminator,
@@ -29,7 +29,7 @@ impl GuestFilter for Pumpfun {
         let mut i;
         let pubkey_len = std::mem::size_of::<Pubkey>();
 
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!(
             "pumpfun_edge - 1 - pubkey {}; data len {}",
             id,
@@ -37,7 +37,7 @@ impl GuestFilter for Pumpfun {
         ));
 
         if match_discriminator(&self.d_bonding_curve, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("pumpfun_edge - 2 - bonding_curve - pubkey {};", id));
 
             // BondingCurve layout after discriminator (8 bytes):
@@ -63,7 +63,7 @@ impl GuestFilter for Pumpfun {
                 }
             }
         } else if match_discriminator(&self.d_global, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("pumpfun_edge - 2 - global - pubkey {};", id));
 
             // Global state - connect program to global state
@@ -75,7 +75,7 @@ impl GuestFilter for Pumpfun {
             });
         }
 
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!("pumpfun_edge - 4 - pubkey {};", id));
         list
     }

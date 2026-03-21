@@ -5,7 +5,7 @@ use solana_sdk::{
 };
 use spl_token::{state::Mint, ID as token_id};
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "linux"))]
 use super::wasmimport::HostImport;
 
 use super::{
@@ -34,11 +34,11 @@ impl GuestFilter for SolToken {
         let pubkey_len = std::mem::size_of::<Pubkey>();
         if header.owner.eq(&system_id) {
             // there is nothing to do;
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("system account - 1__+ -  {}", header.pubkey));
             // DO NOT set edge for system account
         } else if header.owner.eq(&token_id) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!(
                 "token - 1 -  id {}; program {}; account data {}",
                 header.pubkey,
@@ -49,7 +49,7 @@ impl GuestFilter for SolToken {
                 // both edges are incoming, not outgoing.
                 let mint = Pubkey::try_from(&data[0..pubkey_len]).unwrap();
                 let owner = Pubkey::try_from(&data[pubkey_len..2 * pubkey_len]).unwrap();
-                #[cfg(target_os = "wasi")]
+                #[cfg(any(target_os = "wasi", target_os = "linux"))]
                 HostImport::log(format!(
                     "token edge - 1 -  id {}; owner {}; mint {};",
                     header.pubkey, owner, mint
@@ -69,7 +69,7 @@ impl GuestFilter for SolToken {
                     weight: WEIGHT_SPLTOKEN_OWNER,
                 });
             } else if 82 <= data.len() || data.len() <= std::mem::size_of::<Mint>() {
-                #[cfg(target_os = "wasi")]
+                #[cfg(any(target_os = "wasi", target_os = "linux"))]
                 HostImport::log(format!("mint edge - 1 - mint {}", header.pubkey));
                 list.push_back(FilterEdge {
                     slot: header.slot,

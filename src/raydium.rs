@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use solana_sdk::{pubkey::Pubkey, system_program};
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "linux"))]
 use crate::primitive::wasmimport::HostImport;
 use crate::primitive::{
     common::match_discriminator,
@@ -34,7 +34,7 @@ impl GuestFilter for Raydium {
         let prefix = self.d_amm_config.len();
         let mut i = prefix;
         let pubkey_len = std::mem::size_of::<Pubkey>();
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!(
             "raydium_edge - 1 - pubkey {}; data len {}",
             id,
@@ -221,7 +221,7 @@ impl GuestFilter for Raydium {
             }
         }
 
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!("raydium_edge - 4 - pubkey {};", id));
         list
     }

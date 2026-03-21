@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use solana_sdk::{pubkey::Pubkey, system_program::ID as system_id};
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "linux"))]
 use crate::primitive::wasmimport::HostImport;
 use crate::primitive::{
     common::match_discriminator,
@@ -28,14 +28,14 @@ impl GuestFilter for Orca {
         let prefix = self.d_whirlpool.len();
         let mut i;
         let pubkey_len = std::mem::size_of::<Pubkey>();
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!(
             "orca_edge - 1 - pubkey {}; data len {}",
             id,
             data.len()
         ));
         if match_discriminator(&self.d_whirlpoolconfig, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("orca_edge - 2 - whirlpoolconfig - pubkey {};", id));
             // program
             list.push_back(FilterEdge {
@@ -84,7 +84,7 @@ impl GuestFilter for Orca {
                 }
             }
         } else if match_discriminator(&self.d_whirlpool, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("orca_edge - 2 - whirlpool - pubkey {};", id));
             // WhirlpoolsConfig
             {
@@ -143,7 +143,7 @@ impl GuestFilter for Orca {
                 }
             }
         }
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!("orca_edge - 4 - pubkey {};", id));
         list
     }

@@ -180,6 +180,7 @@ impl<B: CatscopeBot> Bot<B> {
 }
 
 // Imported functions
+#[cfg(not(target_os = "linux"))]
 #[link(wasm_import_module = "")]
 extern "C" {
     fn hf_simple_log(ptr: u64, size: u32);
@@ -189,4 +190,31 @@ extern "C" {
     fn hf_account_header(req_callback_id: u64, node_id: u64, o_slot: u64) -> i32;
     fn hf_account_body(req_callback_id: u64, node_id: u64, o_slot: u64) -> i32;
     fn hf_tx_send(req_ptr: u64, req_len: u32) -> i32;
+}
+
+#[cfg(target_os = "linux")]
+unsafe fn hf_simple_log(_ptr: u64, _size: u32) {}
+#[cfg(target_os = "linux")]
+unsafe fn hf_init_args_size() -> u32 {
+    0
+}
+#[cfg(target_os = "linux")]
+unsafe fn hf_init_args(_req_callback_id: u64) -> i32 {
+    0
+}
+#[cfg(target_os = "linux")]
+unsafe fn hf_pubkey_lookup(_req_ptr: u64, _req_len: u32, _resp_callback_id: u64) -> i32 {
+    0
+}
+#[cfg(target_os = "linux")]
+unsafe fn hf_account_header(_req_callback_id: u64, _node_id: u64, _o_slot: u64) -> i32 {
+    0
+}
+#[cfg(target_os = "linux")]
+unsafe fn hf_account_body(_req_callback_id: u64, _node_id: u64, _o_slot: u64) -> i32 {
+    0
+}
+#[cfg(target_os = "linux")]
+unsafe fn hf_tx_send(_req_ptr: u64, _req_len: u32) -> i32 {
+    0
 }

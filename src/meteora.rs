@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use solana_sdk::{pubkey::Pubkey, system_program::ID as system_id};
 
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "wasi", target_os = "linux"))]
 use crate::primitive::wasmimport::HostImport;
 use crate::primitive::{
     common::match_discriminator,
@@ -31,7 +31,7 @@ impl GuestFilter for Meteora {
         let mut i;
         let pubkey_len = std::mem::size_of::<Pubkey>();
 
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!(
             "meteora_edge - 1 - pubkey {}; data len {}",
             id,
@@ -39,7 +39,7 @@ impl GuestFilter for Meteora {
         ));
 
         if match_discriminator(&self.d_lb_pair, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("meteora_edge - 2 - lb_pair - pubkey {};", id));
 
             // LbPair contains: parameters, v_parameters, bump_seed, bin_step_seed (32 bytes)
@@ -109,7 +109,7 @@ impl GuestFilter for Meteora {
                 }
             }
         } else if match_discriminator(&self.d_position, data) || match_discriminator(&self.d_position_v2, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("meteora_edge - 2 - position - pubkey {};", id));
 
             // lb_pair at offset 8
@@ -139,7 +139,7 @@ impl GuestFilter for Meteora {
                 }
             }
         } else if match_discriminator(&self.d_bin_array, data) {
-            #[cfg(target_os = "wasi")]
+            #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("meteora_edge - 2 - bin_array - pubkey {};", id));
 
             // lb_pair at offset 8
@@ -157,7 +157,7 @@ impl GuestFilter for Meteora {
             }
         }
 
-        #[cfg(target_os = "wasi")]
+        #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!("meteora_edge - 4 - pubkey {};", id));
         list
     }
