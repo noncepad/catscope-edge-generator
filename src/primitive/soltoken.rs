@@ -68,15 +68,29 @@ impl GuestFilter for SolToken {
                     to: header.pubkey,
                     weight: WEIGHT_SPLTOKEN_OWNER,
                 });
-            } else if 82 <= data.len() || data.len() <= std::mem::size_of::<Mint>() {
+            } else if data.len() == std::mem::size_of::<Mint>() {
                 #[cfg(any(target_os = "wasi", target_os = "linux"))]
                 HostImport::log(format!("mint edge - 1 - mint {}", header.pubkey));
-                list.push_back(FilterEdge {
-                    slot: header.slot,
-                    from: token_id,
-                    to: header.pubkey,
-                    weight: WEIGHT_PROGRAM,
-                });
+                // mint_authority: COption<Pubkey> at offset 0 (4-byte tag + 32-byte pubkey)
+                if data[0..4] == [1, 0, 0, 0] {
+                    let mint_authority = Pubkey::try_from(&data[4..36]).unwrap();
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        from: mint_authority,
+                        to: header.pubkey,
+                        weight: WEIGHT_PROGRAM,
+                    });
+                }
+                // freeze_authority: COption<Pubkey> at offset 46 (4-byte tag + 32-byte pubkey)
+                if data[46..50] == [1, 0, 0, 0] {
+                    let freeze_authority = Pubkey::try_from(&data[50..82]).unwrap();
+                    list.push_back(FilterEdge {
+                        slot: header.slot,
+                        from: freeze_authority,
+                        to: header.pubkey,
+                        weight: WEIGHT_PROGRAM,
+                    });
+                }
             }
         }
         list
