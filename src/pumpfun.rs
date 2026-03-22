@@ -57,8 +57,8 @@ impl GuestFilter for Pumpfun {
                     list.push_back(FilterEdge {
                         slot: header.slot,
                         weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
+                        from: pubkey,
+                        to: id,
                     });
                 }
             }

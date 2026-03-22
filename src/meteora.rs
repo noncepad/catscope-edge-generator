@@ -42,33 +42,7 @@ impl GuestFilter for Meteora {
             #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("meteora_edge - 2 - lb_pair - pubkey {};", id));
 
-            // LbPair contains: parameters, v_parameters, bump_seed, bin_step_seed (32 bytes)
-            // Then token_x_mint at offset 8 + 32 = 40
-            {
-                i = prefix + 32;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
-            // token_y_mint at offset 8 + 32 + 32 = 72
-            {
-                i = prefix + 32 + pubkey_len;
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_id {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-            }
+            // skip mint edges; mint is reachable transitively via reserve token accounts
             // reserve_x at offset 8 + 32 + 32 + 32 = 104
             {
                 i = prefix + 32 + pubkey_len * 2;
@@ -133,8 +107,8 @@ impl GuestFilter for Meteora {
                     list.push_back(FilterEdge {
                         slot: header.slot,
                         weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
+                        from: pubkey,
+                        to: id,
                     });
                 }
             }

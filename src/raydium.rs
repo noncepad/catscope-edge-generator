@@ -206,19 +206,8 @@ impl GuestFilter for Raydium {
                 }
                 i += pubkey_len;
             }
-            // whitelist mints
-            for _k in 0..100 {
-                let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
-                if pubkey != system_program::ID {
-                    list.push_back(FilterEdge {
-                        slot: header.slot,
-                        weight: WEIGHT_DIRECT,
-                        from: id,
-                        to: pubkey,
-                    });
-                }
-                i += pubkey_len;
-            }
+            // skip whitelist mints; a popular mint used by many operation states would accumulate
+            // too many upstream neighbors
         }
 
         #[cfg(any(target_os = "wasi", target_os = "linux"))]

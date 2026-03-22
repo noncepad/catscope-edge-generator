@@ -65,7 +65,6 @@ pub unsafe extern "C" fn init() -> u64 {
             1 => {
                 list.push_back(Box::new(Solpipe::new(program_id)));
             }
-            /*
             2 => {
                 list.push_back(Box::new(Orca::new(program_id)));
             }
@@ -77,7 +76,7 @@ pub unsafe extern "C" fn init() -> u64 {
             }
             5 => {
                 list.push_back(Box::new(Pumpfun::new(program_id)));
-            }*/
+            }
             _ => {}
         }
     }
