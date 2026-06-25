@@ -43,9 +43,13 @@ impl GuestFilter for Meteora {
             HostImport::log(format!("meteora_edge - 2 - lb_pair - pubkey {};", id));
 
             // skip mint edges; mint is reachable transitively via reserve token accounts
-            // reserve_x at offset 8 + 32 + 32 + 32 = 104
+            // LbPair layout (after 8-byte discriminator):
+            //   StaticParameters(32) + VariableParameters(32) + non-pubkey fields(16)
+            //   + token_x_mint(32) + token_y_mint(32) = 152 → reserve_x
+            //   + reserve_x(32) = 184 → reserve_y
+            //   + reserve_y(32) + protocol_fee(16) + _padding_1(32) + reward_infos(288) = 552 → oracle
             {
-                i = prefix + 32 + pubkey_len * 2;
+                i = 152;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
                     list.push_back(FilterEdge {
@@ -56,9 +60,9 @@ impl GuestFilter for Meteora {
                     });
                 }
             }
-            // reserve_y at offset 8 + 32 + 32 + 32 + 32 = 136
+            // reserve_y at offset 184
             {
-                i = prefix + 32 + pubkey_len * 3;
+                i = 184;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
                     list.push_back(FilterEdge {
@@ -69,9 +73,9 @@ impl GuestFilter for Meteora {
                     });
                 }
             }
-            // oracle at offset 8 + 32 + 32 + 32 + 32 + 32 = 168
+            // oracle at offset 552
             {
-                i = prefix + 32 + pubkey_len * 4;
+                i = 552;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
                     list.push_back(FilterEdge {
@@ -116,9 +120,10 @@ impl GuestFilter for Meteora {
             #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("meteora_edge - 2 - bin_array - pubkey {};", id));
 
-            // lb_pair at offset 8
+            // BinArray layout: disc(8) + index(i64=8) + version(u8=1) + _padding_1([u8;7]=7)
+            // lb_pair at offset 24
             {
-                i = prefix;
+                i = 24;
                 let pubkey = Pubkey::try_from(&data[i..(i + pubkey_len)]).unwrap();
                 if pubkey != system_id {
                     list.push_back(FilterEdge {
