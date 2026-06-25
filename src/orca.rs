@@ -296,7 +296,7 @@ mod tests {
         };
         let filter = Orca::new(&program_id);
         let mut list = filter.edge(&header, &data);
-        assert_eq!(list.len(), 4, "whirlpool config must have 3 edges");
+        assert_eq!(list.len(), 4, "whirlpool config must have 4 edges");
         let mut m_edge: HashMap<Pubkey, Weight> = HashMap::default();
         while let Some(edge) = list.pop_front() {
             if edge.from == header.pubkey {

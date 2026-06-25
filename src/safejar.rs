@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, system_program::ID as system_id};
 
 #[cfg(any(target_os = "wasi", target_os = "linux"))]
 use crate::primitive::wasmimport::HostImport;
@@ -27,6 +27,10 @@ impl GuestFilter for Safejar {
         // all discriminators are the same length
         let prefix = self.d_controller.len();
         let pubkey_len = std::mem::size_of::<Pubkey>();
+        let read_pk = |off: usize| -> Option<Pubkey> {
+            let pk = Pubkey::try_from(&data[off..(off + pubkey_len)]).unwrap();
+            if pk == system_id { None } else { Some(pk) }
+        };
         #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!(
             "safejar_edge - _1 - pubkey {}; data len {}",
@@ -44,22 +48,26 @@ impl GuestFilter for Safejar {
                 to: id,
             });
             // controller to owner
-            list.push_back(FilterEdge {
-                slot: header.slot,
-                from: id,
-                to: Pubkey::try_from(&data[(prefix + 1)..(prefix + 1 + pubkey_len)]).unwrap(),
-                weight: WEIGHT_DIRECT,
-            });
+            if let Some(owner) = read_pk(prefix + 1) {
+                list.push_back(FilterEdge {
+                    slot: header.slot,
+                    from: id,
+                    to: owner,
+                    weight: WEIGHT_DIRECT,
+                });
+            }
         } else if match_discriminator(&self.d_delegation, data) {
             #[cfg(any(target_os = "wasi", target_os = "linux"))]
             HostImport::log(format!("safejar_edge - 3 - delegation - pubkey {};", id));
             // controller to delegation
-            list.push_back(FilterEdge {
-                slot: header.slot,
-                from: Pubkey::try_from(&data[(prefix + 1)..(prefix + 1 + pubkey_len)]).unwrap(),
-                to: id,
-                weight: WEIGHT_DIRECT,
-            });
+            if let Some(controller) = read_pk(prefix + 1) {
+                list.push_back(FilterEdge {
+                    slot: header.slot,
+                    from: controller,
+                    to: id,
+                    weight: WEIGHT_DIRECT,
+                });
+            }
         }
         #[cfg(any(target_os = "wasi", target_os = "linux"))]
         HostImport::log(format!("safejar_edge - 4 - pubkey {};", id));
